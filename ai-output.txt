@@ -1,0 +1,61 @@
+To ensure that the white arrow marker is fully visible from any camera angle in your 360° virtual tour viewer using Three.js, you can follow these steps:
+
+1. **Billboarding**: Make the arrow always face the camera. This technique is known as billboarding. It ensures that the marker is always oriented towards the camera, making it fully visible regardless of the camera angle.
+
+2. **Depth Testing**: Ensure that the marker is not being occluded by other objects in the scene. You can adjust the depth testing properties to make sure the marker is always rendered on top.
+
+3. **Scale with Distance**: Adjust the size of the marker based on its distance from the camera. This can help maintain visibility as the camera moves closer or further away.
+
+Here's a basic implementation using Three.js:
+
+```javascript
+// Assuming you have a scene, camera, and renderer already set up
+
+// Create a marker (white arrow)
+const markerGeometry = new THREE.PlaneGeometry(1, 1); // Adjust size as needed
+const markerMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffffff, // White color
+  side: THREE.DoubleSide,
+  depthTest: false, // Disable depth test to ensure it's always visible
+  transparent: true,
+  opacity: 1.0
+});
+const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+
+// Add the marker to the scene
+scene.add(marker);
+
+// Function to update marker orientation and scale
+function updateMarker() {
+  // Make the marker face the camera
+  marker.lookAt(camera.position);
+
+  // Optionally, scale the marker based on distance to the camera
+  const distance = camera.position.distanceTo(marker.position);
+  const scaleFactor = distance * 0.1; // Adjust the scale factor as needed
+  marker.scale.set(scaleFactor, scaleFactor, scaleFactor);
+}
+
+// Call updateMarker in your animation loop
+function animate() {
+  requestAnimationFrame(animate);
+
+  // Update marker visibility
+  updateMarker();
+
+  // Render the scene
+  renderer.render(scene, camera);
+}
+
+animate();
+```
+
+### Explanation:
+
+- **Billboarding**: The `marker.lookAt(camera.position);` line ensures that the marker always faces the camera, making it visible from any angle.
+
+- **Depth Testing**: By setting `depthTest: false` in the material, the marker will render on top of other objects, ensuring visibility.
+
+- **Scaling**: The marker's scale is adjusted based on its distance from the camera, which helps maintain a consistent size on the screen.
+
+Make sure to adjust the marker's position and scale factor according to your specific scene setup and requirements. This code provides a basic framework to ensure marker visibility in a 360° virtual tour viewer using Three.js.
