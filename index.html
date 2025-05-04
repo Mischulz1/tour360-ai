@@ -1,0 +1,186 @@
+<div style="max-width:900px;margin:0 auto;position:relative;">
+  <div id="viewer" style="width:100%;height:60vh;background:#000;position:relative;overflow:hidden;"></div>
+  <div id="tooltip" style="position:absolute;pointer-events:none;padding:6px 10px;background:#000;color:#fff;border-radius:4px;font-size:14px;white-space:nowrap;display:none;z-index:1000;opacity:0.8"></div>
+  <div id="fade" style="position:absolute;top:0;left:0;width:100%;height:100%;background:#000;opacity:1;pointer-events:none;transition:opacity 0.8s;z-index:999;display:flex;align-items:center;justify-content:center;">
+    <img id="dots" src="https://mika.b-cdn.net/three_circling_dots.png" style="width:60px;height:60px;animation:spin 1s linear infinite;">
+  </div>
+</div>
+
+<style>
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script>
+setTimeout(() => {
+  const container = document.getElementById("viewer");
+  const tooltip = document.getElementById("tooltip");
+  const fade = document.getElementById("fade");
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  container.appendChild(renderer.domElement);
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  let INTERSECTED = null;
+  camera.position.set(0, 0, 0);
+
+  const loader = new THREE.TextureLoader();
+  const sphereGeo = new THREE.SphereGeometry(500, 64, 32);
+  sphereGeo.scale(-1, 1, 1);
+
+  const config = {
+    images: [
+      {
+        id: "room1",
+        url: "https://mika.b-cdn.net/IMG_7887.JPG",
+        marker: { theta: 90, phi: 0, target: "room2", label: "Go to Room 2" }
+      },
+      {
+        id: "room2",
+        url: "https://mika.b-cdn.net/IMG_7888.JPG",
+        marker: { theta: 270, phi: 0, target: "room1", label: "Back to Room 1" }
+      }
+    ]
+  };
+
+  let currentIndex = 0;
+  let sphere = null;
+  let marker = null;
+
+  function degToEuler(theta, phi) {
+    const y = THREE.MathUtils.degToRad(theta);
+    const x = THREE.MathUtils.degToRad(phi);
+    return new THREE.Euler(x, -y, 0, "YXZ");
+  }
+
+  function loadRoom(index) {
+    if (sphere) {
+      scene.remove(sphere);
+      sphere.material.map.dispose();
+    }
+    if (marker) {
+      scene.remove(marker);
+      marker.material.map.dispose();
+    }
+
+    const image = config.images[index];
+    loader.load(image.url, function(texture) {
+      const mat = new THREE.MeshBasicMaterial({ map: texture });
+      sphere = new THREE.Mesh(sphereGeo.clone(), mat);
+      scene.add(sphere);
+      fade.style.opacity = 0;
+    });
+
+    loader.load("https://mika.b-cdn.net/ChatGPT%20Image%20May%203%2C%202025%2C%2012_59_57%20PM.png", function(tex) {
+      const geometry = new THREE.PlaneGeometry(1, 1);
+      const material = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthTest: false,
+        opacity: 1.0
+      });
+      marker = new THREE.Mesh(geometry, material);
+
+      const r = 490;
+      const th = THREE.MathUtils.degToRad(image.marker.theta);
+      const ph = THREE.MathUtils.degToRad(image.marker.phi);
+      marker.position.set(
+        r * Math.sin(th) * Math.cos(ph),
+        r * Math.sin(ph),
+        r * Math.cos(th) * Math.cos(ph)
+      );
+
+      marker.scale.set(80, 80, 1);
+      marker.userData = { target: image.marker.target, label: image.marker.label, theta: image.marker.theta, phi: image.marker.phi };
+      scene.add(marker);
+    });
+  }
+
+  let isDragging = false, prevX = 0, prevY = 0;
+  const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+  container.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    prevX = e.clientX;
+    prevY = e.clientY;
+  });
+
+  container.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevX;
+    const dy = e.clientY - prevY;
+    euler.setFromQuaternion(camera.quaternion);
+    euler.y -= dx * 0.002;
+    euler.x -= dy * 0.002;
+    euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.x));
+    euler.z = 0;
+    camera.quaternion.setFromEuler(euler);
+    prevX = e.clientX;
+    prevY = e.clientY;
+  });
+
+  container.addEventListener("mouseup", () => isDragging = false);
+  container.addEventListener("mouseleave", () => {
+    isDragging = false;
+    tooltip.style.display = "none";
+  });
+
+  container.addEventListener("mousemove", function(event) {
+    const rect = container.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    tooltip.style.left = (event.clientX + 10) + "px";
+    tooltip.style.top = (event.clientY + 10) + "px";
+  });
+
+  container.addEventListener("click", function(e) {
+    if (INTERSECTED && INTERSECTED.userData.target) {
+      const nextIndex = config.images.findIndex(img => img.id === INTERSECTED.userData.target);
+      if (nextIndex !== -1) {
+        fade.style.opacity = 1;
+        setTimeout(() => {
+          currentIndex = nextIndex;
+          loadRoom(currentIndex);
+        }, 600);
+      }
+    }
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (marker) {
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(marker);
+      if (intersects.length > 0) {
+        if (INTERSECTED !== marker) {
+          INTERSECTED = marker;
+          marker.scale.set(96, 96, 1);
+          marker.material.opacity = 0.5;
+          tooltip.textContent = marker.userData.label || "";
+          tooltip.style.display = "block";
+        }
+      } else {
+        if (INTERSECTED) {
+          marker.scale.set(80, 80, 1);
+          marker.material.opacity = 1;
+          tooltip.style.display = "none";
+          INTERSECTED = null;
+        }
+      }
+      marker.lookAt(camera.position);
+    }
+    renderer.render(scene, camera);
+  }
+
+  loadRoom(currentIndex);
+  animate();
+}, 300);
+</script>
