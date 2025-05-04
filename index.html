@@ -1,53 +1,36 @@
-To add a zoom-in animation on a marker during the transition from one image to another in a 360° viewer, you would need to use JavaScript in addition to HTML and CSS. Here's a basic example of how you might do this:
-
-```html
 <!DOCTYPE html>
 <html>
 <head>
+    <title>360° Image Viewer</title>
     <style>
-        #viewer {
-            width: 100%;
-            height: 500px;
-            position: relative;
-        }
-        .marker {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: red;
-            border-radius: 50%;
-            transform: scale(1);
-            transition: transform 1s;
+        body {
+            margin: 0;
+            overflow: hidden;
         }
     </style>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
 </head>
 <body>
-    <div id="viewer">
-        <div id="marker" class="marker" style="top: 50%; left: 50%;"></div>
-    </div>
+    <a-scene>
+        <a-assets>
+            <img id="image-360" src="path_to_your_image.jpg">
+        </a-assets>
 
-    <button onclick="changeImage()">Change Image</button>
+        <a-sky src="#image-360"></a-sky>
+
+        <a-entity id="camera" camera look-controls>
+            <a-cursor></a-cursor>
+        </a-entity>
+
+        <a-entity id="marker" geometry="primitive: sphere; radius: 0.5" material="color: red" position="0 1.6 -3"></a-entity>
+
+        <a-animation attribute="camera.position" dur="1000" fill="forwards" to="0 1.6 -3" begin="marker.click"></a-animation>
+    </a-scene>
 
     <script>
-        function changeImage() {
-            // Change the image of the viewer here
-
-            // Zoom in on the marker
-            var marker = document.getElementById('marker');
-            marker.style.transform = 'scale(2)';
-            
-            // After the transition, reset the scale and change the position of the marker
-            setTimeout(function() {
-                marker.style.transform = 'scale(1)';
-                marker.style.top = Math.random() * 100 + '%';
-                marker.style.left = Math.random() * 100 + '%';
-            }, 1000);
-        }
+        document.querySelector('#marker').addEventListener('click', function () {
+            document.querySelector('#camera').emit('zoom');
+        });
     </script>
 </body>
 </html>
-```
-
-In this example, when you click the "Change Image" button, the marker will zoom in (by increasing its scale), and after 1 second (the duration of the transition), it will zoom out and move to a random position.
-
-Please note that this is a very basic example and might not work perfectly in a real 360° viewer. You would need to adjust the code according to your specific requirements and the library you're using for the 360° viewer.
